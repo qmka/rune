@@ -37,14 +37,6 @@ class Board(models.Model):
     def get_board_by_slug(slug):
         return Board.objects.filter(slug=slug).first()
 
-    @staticmethod
-    def get_feeds_by_board(board_id):
-        return Board.objects.filter(id=board_id).all()
-
-    @staticmethod
-    def get_first_feed_by_board(board_id):
-        return Board.objects.filter(id=board_id).first()
-
 
 class Feed(models.Model):
     id = models.AutoField(primary_key=True)
@@ -54,13 +46,13 @@ class Feed(models.Model):
     site_url = models.URLField()
     feed_url = models.URLField()
     updated = models.DateTimeField()
-    board_id = models.ForeignKey(Board, on_delete=models.SET_NULL, null=True)
+    board = models.ForeignKey(Board, on_delete=models.SET_NULL, null=True)
 
     def __str__(self):
         return self.title
 
     @staticmethod
-    def add_feed(title, subtitle, site_url, feed_url, board_id):
+    def add_feed(title, subtitle, site_url, feed_url, board):
         existing_feed = Feed.objects.filter(feed_url=feed_url).first()
         if existing_feed:
             return existing_feed
@@ -71,7 +63,7 @@ class Feed(models.Model):
                 subtitle=subtitle,
                 site_url=site_url,
                 feed_url=feed_url,
-                board_id=board_id,
+                board=board,
                 slug=slug,
                 updated=datetime.now()
             )
@@ -101,11 +93,12 @@ class Feed(models.Model):
         return Feed.objects.order_by('-updated')[0]
 
     @staticmethod
-    def get_articles_by_feed(feed_id, limit=None):
-        articles = Article.objects.filter(feed_id=feed_id).order_by('-published')
-        if limit is not None:
-            articles = articles[:limit]
-        return articles
+    def get_first_feed_by_board(board):
+        return Feed.objects.filter(board=board).first()
+
+    @staticmethod
+    def get_feeds_by_board(board):
+        return Feed.objects.filter(board=board).all()
 
 
 class Article(models.Model):
@@ -152,7 +145,7 @@ class Article(models.Model):
     @staticmethod
     def get_article_by_id(article_id):
         try:
-            return Article.objects.get(pk=id)
+            return Article.objects.get(pk=article_id)
         except Article.DoesNotExist:
             return None
 
@@ -171,3 +164,9 @@ class Article(models.Model):
             return True
         return False
 
+    @staticmethod
+    def get_articles_by_feed(feed, limit=None):
+        articles = Article.objects.filter(feed=feed).order_by('-published')
+        if limit is not None:
+            articles = articles[:limit]
+        return articles
