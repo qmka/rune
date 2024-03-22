@@ -1,0 +1,14 @@
+__pycache__
+.idea/
+.venv/
+.pytest_cache/
+dist/
+thumbnails/
+reader/migrations
+*.sqlite3
+*.egg-info
+*.log
+.coverage
+coverage.xml
+*.pyc
+boards.yml
