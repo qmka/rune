@@ -2,7 +2,7 @@ import random
 from datetime import datetime
 
 from django.db import models
-from django.utils.text import slugify
+from pytils.translit import slugify
 
 
 class Board(models.Model):
@@ -117,7 +117,6 @@ class Article(models.Model):
 
     @staticmethod
     def add_article(title, description, url, feed, published, thumbnail):
-        feed = Feed.objects.get(pk=feed)
         slug = slugify(title)
         existing_article = Article.objects.filter(slug=slug).first()
         if existing_article:
