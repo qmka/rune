@@ -1,12 +1,16 @@
 import feedparser
 import json
+import pytz
 
 from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from models import Feed, Article, Board
-from utils import check_file_size, download, download_json, truncate_string_by_dot
-from utils import transform_telegram_url_to_web_url, get_first_sentence, extract_background_image_url
+from .models import Feed, Article, Board
+from .utils import check_file_size, download, download_json, truncate_string_by_dot, get_base_url
+from .utils import transform_telegram_url_to_web_url, get_first_sentence, extract_background_image_url
+
+USER_UTC = 4
+USER_TIMEZONE = 'Europe/Saratov'
 
 TELEGRAM_CHANNEL_WEBVIEW_PREFIX = "https://t.me/s/"
 
@@ -79,29 +83,26 @@ def get_thumbnail(entry):
     return ''
 
 
-'''def convert_to_datetime(date_string):
-    for pattern in DATETIME_PATTERNS:
-        try:
-            datetime_object = datetime.strptime(date_string, pattern)
-            return datetime_object
-        except ValueError:
-            pass
-    return None'''
-
-
-def convert_to_datetime(date_string):
+def convert_to_datetime(datetime_string):
     datetime_format1 = '%a, %d %b %Y %H:%M:%S %z'
     datetime_format2 = '%a, %d %b %Y %H:%M:%S %Z'
 
     try:
-        date = datetime.strptime(date_string, datetime_format1)
+        raw_datetime = datetime.strptime(datetime_string, datetime_format1)
     except ValueError:
         try:
-            date = datetime.strptime(date_string, datetime_format2)
+            raw_datetime = datetime.strptime(datetime_string, datetime_format2)
         except ValueError:
             raise ValueError("Неверный формат даты")
 
-    return date
+    if raw_datetime.tzinfo is None:
+        aware_datetime = raw_datetime.replace(tzinfo=pytz.timezone(USER_TIMEZONE))
+    else:
+        aware_datetime = raw_datetime
+    delta = timedelta(hours=USER_UTC)
+    final_datetime = aware_datetime + delta
+
+    return final_datetime
 
 
 def convert_to_datetime_tj(str_date):
@@ -111,7 +112,7 @@ def convert_to_datetime_tj(str_date):
 
 def convert_to_datetime_kanobu(str_date):
     # "%Y-%m-%dT%H:%M:%S.%f"
-    datetime_format = '%Y-%m-%dT%H:%M:%S'
+    datetime_format = '%Y-%m-%dT%H:%M:%S%z'
     return datetime.strptime(str_date, datetime_format)
 
 
@@ -161,7 +162,8 @@ def parse_tj(url, feed_title, board_title):
 
     for card in tj['cards']:
         article = card['article']
-        article_url = f"{url[:-1]}{article['path']}"
+        # previous tj api: article_url = f"{url[:-1]}{article['path']}"
+        article_url = f"{get_base_url(url)}{article['path']}"
         article_description = article['excerpt']
         if not card['media']['backgroundImage']:
             article_thumbnail = card['media']['image']['files']['original']['filepath']
@@ -196,21 +198,12 @@ def get_tj_json(url):
     hidden_json_content = soup.find('script', {'type': 'application/json', 'data-id': 'flow-page'})
     json_data = json.loads(hidden_json_content.string)
 
-    with open('example_json.json', 'a', encoding='utf-8') as f:
-        json.dump(json_data, f, ensure_ascii=False)
-
     return json_data
-
-
-
 
 
 def parse_telegram(url, channel_name, board_title, limit=100):
     web_url = transform_telegram_url_to_web_url(url)
     raw_content = download(web_url)
-
-    with open('example.html', 'a', encoding='utf-8') as f:
-        f.write(raw_content)
 
     soup = BeautifulSoup(raw_content, features="lxml")
 
@@ -243,13 +236,14 @@ def parse_telegram(url, channel_name, board_title, limit=100):
             message_datetime_tag = message_date_tag[0].select("time")
             if message_datetime_tag:
                 message_time = datetime.strptime(message_datetime_tag[0]["datetime"][:19], "%Y-%m-%dT%H:%M:%S")
-
+        delta = timedelta(hours=USER_UTC)
+        message_time_with_delta = message_time + delta
         Article.add_article(
             message_title,
             message_text,
             message_url,
             new_feed,
-            message_time,
+            message_time_with_delta,
             message_photo
         )
 
