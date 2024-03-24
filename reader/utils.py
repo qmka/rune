@@ -4,6 +4,7 @@ import io
 
 from bs4 import BeautifulSoup
 from fake_useragent import UserAgent
+from urllib.parse import urlparse
 
 
 def download(url):
@@ -120,3 +121,9 @@ def truncate_string_by_dot(input_string):
     else:
         truncated_string = input_string
     return truncated_string
+
+
+def get_base_url(url):
+    parsed_url = urlparse(url)
+    base_url = parsed_url.scheme + "://" + parsed_url.netloc
+    return base_url
