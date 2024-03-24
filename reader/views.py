@@ -2,8 +2,8 @@ import yaml
 
 from django.shortcuts import render, redirect
 
-from models import Board, Feed, Article
-from parsers import get_rss, parse_rss, parse_tj, parse_kanobu, parse_telegram
+from .models import Board, Feed, Article
+from .parsers import get_rss, parse_rss, parse_tj, parse_kanobu, parse_telegram
 
 
 FEED_LENGTH = 30
@@ -118,8 +118,8 @@ def get_article(request, board_slug, feed_slug, article_slug):
     )
 
 
-def init_feeds():
-    with open('boards/boards.yml', 'r') as file:
+def update_feeds(request):
+    with open('boards/boards.yml', 'r', encoding='utf-8') as file:
         data = yaml.safe_load(file)
     boards = data['boards']
     for board in boards:
@@ -137,4 +137,3 @@ def init_feeds():
                 parse_kanobu(feed['url'], feed['site_url'], feed['title'], board['title'])
     print('DB updated!')
     return redirect('index')
-
